@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="60" viewBox="0 0 80 60" preserveAspectRatio="none" data-component-params="label,color,url,refreshinterval,isactive,aspectratio,allowfullscreen,scalex,scaley,minwidth,minheight,preserveaspectratio,originalwidth,originalheight,padding,statusbarheight,ison,isblinking,blinkrate">
+    <metadata>
+        <component id="display-001" name="HTML Display" type="display">
+            <parameters>
+                <label>Display</label>
+                <color>#3498db</color>
+                <url>about:blank</url>
+                <refreshInterval>0</refreshInterval>
+                <isActive>true</isActive>
+                <aspectRatio>16:9</aspectRatio>
+                <allowFullScreen>true</allowFullScreen>
+                <scaleX>1.0</scaleX>
+                <scaleY>1.0</scaleY>
+                <minWidth>40</minWidth>
+                <minHeight>30</minHeight>
+                <preserveAspectRatio>true</preserveAspectRatio>
+                <originalWidth>80</originalWidth>
+                <originalHeight>60</originalHeight>
+                <padding>5</padding>
+                <statusBarHeight>12</statusBarHeight>
+                <ison>false</ison><isblinking>false</isblinking><blinkrate>500</blinkrate></parameters>
+        </component>
+    </metadata>
+
+    <defs>
+        <script>
+        <![CDATA[
+            // Kod inicjalizujący komponent wyświetlacza - uproszczony i bardziej niezawodny
+            (function() {
+                // Funkcja pomocnicza - znajdź najbliższy element SVG zawierający wyświetlacz
+                function findDisplaySvg() {
+                    // 1. Próba przez document.currentScript (działa w IDE)
+                    var svg = document.currentScript ? document.currentScript.closest('svg') : null;
+                    
+                    // 2. Jeśli nie zadziałało, szukaj po selektorach klasy
+                    if (!svg) {
+                        var svgs = document.querySelectorAll('svg');
+                        for (var i = 0; i < svgs.length; i++) {
+                            var candidate = svgs[i];
+                            // Sprawdź czy to wyświetlacz szukając charakterystycznych elementów
+                            if (candidate.querySelector('.display-body') || 
+                                candidate.querySelector('.display-title') || 
+                                candidate.querySelector('.display-label') ||
+                                candidate.querySelector('.display-value')) {
+                                svg = candidate;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    return svg;
+                }
+                
+                // Funkcja czytająca metadane z SVG
+                function getMetadata(svg) {
+                    try {
+                        var params = {
+                            label: 'Display',
+                            text: 'Ready',
+                            status: 'OK',
+                            backlight: true,
+                            color: '#2c3e50',
+                            url: 'about:blank',
+                            refreshInterval: 0,
+                            isActive: true,
+                            aspectRatio: '16:9',
+                            allowFullScreen: true,
+                            scaleX: 1.0,
+                            scaleY: 1.0,
+                            minWidth: 40,
+                            minHeight: 30,
+                            preserveAspectRatio: true,
+                            originalWidth: 80,
+                            originalHeight: 60,
+                            padding: 5,
+                            statusBarHeight: 12
+                        };
+                        
+                        var metadata = svg.querySelector('metadata component parameters');
+                        if (metadata) {
+                            var labelEl = metadata.querySelector('label');
+                            if (labelEl) params.label = labelEl.textContent || 'Display';
+                            
+                            var textEl = metadata.querySelector('text');
+                            if (textEl) params.text = textEl.textContent || 'Ready';
+                            
+                            var statusEl = metadata.querySelector('status');
+                            if (statusEl) params.status = statusEl.textContent || 'OK';
+                            
+                            var backlightEl = metadata.querySelector('backlight');
+                            if (backlightEl) params.backlight = backlightEl.textContent !== 'false';
+                            
+                            var colorEl = metadata.querySelector('color');
+                            if (colorEl) params.color = colorEl.textContent || '#2c3e50';
+                            
+                            var urlEl = metadata.querySelector('url');
+                            if (urlEl) params.url = urlEl.textContent || 'about:blank';
+                            
+                            var refreshEl = metadata.querySelector('refreshInterval');
+                            if (refreshEl) params.refreshInterval = parseInt(refreshEl.textContent) || 0;
+                            
+                            var activeEl = metadata.querySelector('isActive');
+                            if (activeEl) params.isActive = activeEl.textContent !== 'false';
+                            
+                            var ratioEl = metadata.querySelector('aspectRatio');
+                            if (ratioEl) params.aspectRatio = ratioEl.textContent || '16:9';
+                            
+                            var fullscreenEl = metadata.querySelector('allowFullScreen');
+                            if (fullscreenEl) params.allowFullScreen = fullscreenEl.textContent !== 'false';
+                            
+                            var scaleXEl = metadata.querySelector('scaleX');
+                            if (scaleXEl) params.scaleX = parseFloat(scaleXEl.textContent) || 1.0;
+                            
+                            var scaleYEl = metadata.querySelector('scaleY');
+                            if (scaleYEl) params.scaleY = parseFloat(scaleYEl.textContent) || 1.0;
+                            
+                            var minWidthEl = metadata.querySelector('minWidth');
+                            if (minWidthEl) params.minWidth = parseFloat(minWidthEl.textContent) || 40;
+                            
+                            var minHeightEl = metadata.querySelector('minHeight');
+                            if (minHeightEl) params.minHeight = parseFloat(minHeightEl.textContent) || 30;
+                            
+                            var preserveAspectRatioEl = metadata.querySelector('preserveAspectRatio');
+                            if (preserveAspectRatioEl) params.preserveAspectRatio = preserveAspectRatioEl.textContent !== 'false';
+                            
+                            var originalWidthEl = metadata.querySelector('originalWidth');
+                            if (originalWidthEl) params.originalWidth = parseFloat(originalWidthEl.textContent) || 80;
+                            
+                            var originalHeightEl = metadata.querySelector('originalHeight');
+                            if (originalHeightEl) params.originalHeight = parseFloat(originalHeightEl.textContent) || 60;
+                            
+                            var paddingEl = metadata.querySelector('padding');
+                            if (paddingEl) params.padding = parseFloat(paddingEl.textContent) || 5;
+                            
+                            var statusBarHeightEl = metadata.querySelector('statusBarHeight');
+                            if (statusBarHeightEl) params.statusBarHeight = parseFloat(statusBarHeightEl.textContent) || 12;
+                        }
+                        
+                        return params;
+                    } catch(err) {
+                        console.error('Błąd odczytu metadanych wyświetlacza:', err);
+                        return {
+                            label: 'Display',
+                            text: 'Ready',
+                            status: 'OK',
+                            backlight: true,
+                            color: '#2c3e50'
+                        };
+                    }
+                }
+                
+                // Aktualizacja wyświetlacza
+                function updateDisplayComponent(svg, params) {
+                    // Aktualizacja tła wyświetlacza
+                    var body = svg.querySelector('.display-body, #body');
+                    if (body && params.color) {
+                        body.setAttribute('fill', params.color);
+                    }
+                    
+                    // Aktualizacja etykiety wyświetlacza
+                    var label = svg.querySelector('.display-label');
+                    if (label && params.label) {
+                        label.textContent = params.label;
+                    }
+                    
+                    // Aktualizacja wartości wyświetlacza
+                    var valueText = svg.querySelector('.display-value');
+                    if (valueText && params.text) {
+                        valueText.textContent = params.text;
+                    }
+                    
+                    // Aktualizacja paska statusu
+                    var title = svg.querySelector('.display-title');
+                    if (title && params.label) {
+                        title.textContent = params.label;
+                    }
+                    
+                    // Podświetlenie (jeśli jest aktywne)
+                    if (body) {
+                        var strokeColor = params.backlight ? '#2ecc71' : '#34495e';
+                        body.setAttribute('stroke', strokeColor);
+                    }
+                }
+                
+                // Funkcja odświeżania zawartości (URL)
+                function setupRefresh(svg, params) {
+                    // Tylko gdy interwał jest większy niż 0 i URL jest ustawiony
+                    if (params.refreshInterval <= 0 || !params.url || params.url === 'about:blank') {
+                        return;
+                    }
+                    
+                    // Usuń istniejący timer
+                    if (svg._refreshTimer) {
+                        clearInterval(svg._refreshTimer);
+                        svg._refreshTimer = null;
+                    }
+                    
+                    // Ustaw nowy timer
+                    svg._refreshTimer = setInterval(function() {
+                        if (!svg.isConnected) {
+                            // Cleanup if element removed
+                            clearInterval(svg._refreshTimer);
+                            return;
+                        }
+                        
+                        // Odśwież zawartość
+                        if (params.isActive) {
+                            // Tutaj kod odświeżania zawartości URL
+                            var contentElement = svg.querySelector('.display-content');
+                            if (contentElement) {
+                                // Do implementacji: odświeżanie zawartości
+                                console.log('Odświeżanie zawartości URL:', params.url);
+                            }
+                        }
+                    }, params.refreshInterval * 1000);
+                }
+                
+                // Publiczne API wyświetlacza
+                function setupDisplayAPI(svg) {
+                    // Ustaw tekst wyświetlacza
+                    svg.setDisplayText = function(text) {
+                        if (!svg._displayConfig) return;
+                        
+                        svg._displayConfig.text = text || 'Ready';
+                        updateDisplayComponent(svg, svg._displayConfig);
+                    };
+                    
+                    // Ustaw URL źródła wyświetlacza
+                    svg.setDisplayUrl = function(url) {
+                        if (!svg._displayConfig) return;
+                        
+                        svg._displayConfig.url = url || 'about:blank';
+                        setupRefresh(svg, svg._displayConfig);
+                    };
+                    
+                    // Ustaw interwał odświeżania
+                    svg.setRefreshInterval = function(seconds) {
+                        if (!svg._displayConfig) return;
+                        
+                        svg._displayConfig.refreshInterval = Math.max(0, parseInt(seconds) || 0);
+                        setupRefresh(svg, svg._displayConfig);
+                    };
+                    
+                    // Włącz/wyłącz wyświetlacz
+                    svg.setActive = function(isActive) {
+                        if (!svg._displayConfig) return;
+                        
+                        svg._displayConfig.isActive = isActive !== false;
+                        svg._displayConfig.backlight = isActive !== false;
+                        updateDisplayComponent(svg, svg._displayConfig);
+                    };
+                    
+                    // Ustaw label wyświetlacza
+                    svg.setDisplayLabel = function(label) {
+                        if (!svg._displayConfig) return;
+                        
+                        svg._displayConfig.label = label || 'Display';
+                        updateDisplayComponent(svg, svg._displayConfig);
+                    };
+                }
+                
+                // Główna funkcja inicjalizująca
+                function initializeDisplay() {
+                    // Znajdź SVG wyświetlacza
+                    var svg = findDisplaySvg();
+                    if (!svg) {
+                        console.error('Nie znaleziono SVG wyświetlacza');
+                        return;
+                    }
+                    
+                    // Zabezpieczenie przed wielokrotną inicjalizacją
+                    if (svg.hasAttribute('data-display-initialized')) return;
+                    svg.setAttribute('data-display-initialized', 'true');
+                    
+                    // Unikalne ID dla tej instancji
+                    svg._displayId = 'display-' + Math.floor(Math.random() * 10000);
+                    console.log('Inicjalizacja wyświetlacza: ' + svg._displayId);
+                    
+                    // Odczyt parametrów
+                    var params = getMetadata(svg);
+                    
+                    // Konfiguracja wyświetlacza
+                    svg._displayConfig = params;
+                    
+                    // Konfiguracja API
+                    setupDisplayAPI(svg);
+                    
+                    // Aktualizacja początkowa
+                    updateDisplayComponent(svg, svg._displayConfig);
+                    
+                    // Ustaw odświeżanie jeśli potrzebne
+                    setupRefresh(svg, svg._displayConfig);
+                }
+                
+                // Funkcja inicjalizująca - uruchom natychmiast
+                initializeDisplay();
+                
+                // Zarejestruj funkcję w DOMContentLoaded dla wyeksportowanych SVG
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initializeDisplay);
+                }
+                
+                // Wyeksportuj funkcję do globalnej przestrzeni nazw w zwykłym JavaScript (nie ES6)
+                if (typeof window !== 'undefined') {
+                    window.initDisplayInstance = function() {
+                        initializeDisplay();
+                    };
+                }
+            })();
+        ]]>
+        </script>
+    </defs>
+
+    <!-- Display frame -->
+    <rect class="display-frame" x="2" y="2" width="76" height="56" rx="4" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="1" aria-hidden="true"/>
+    <rect class="display-background" x="5" y="5" width="70" height="50" rx="2" fill="#fff" stroke="#95a5a6" stroke-width="1" aria-hidden="true"/>
+    
+    <!-- Status bar -->
+    <rect id="statusBar" class="display-statusbar" x="5" y="5" width="70" height="12" fill="#3498db" rx="2" aria-label="Pasek statusu wyświetlacza"/>
+    <text id="title" class="display-title editable-text" x="10" y="15" font-size="8" fill="white" aria-label="Tytuł wyświetlacza" data-property="title">Display</text>
+    
+    <!-- Content will be inserted here by JavaScript -->
+    
+    <!-- Hidden style for resize handle -->
+    <style>
+        .resize-handle {
+            fill: #3498db;
+            cursor: nwse-resize;
+            opacity: 0.7;
+        }
+        .resize-handle:hover {
+            opacity: 1;
+        }
+        .editable-text {
+            cursor: text;
+        }
+        .editable-text:hover {
+            opacity: 0.8;
+        }
+    </style>
+    <metadata>
+        <component id="display-001" name="HMI Display" type="display">
+            <parameters>
+                <label>Panel</label>
+                <color>#2c3e50</color>
+                <text>Ready</text>
+                <status>OK</status>
+                <backlight>true</backlight>
+            </parameters>
+        </component>
+    </metadata>
+
+
+  <rect id="body" class="display-body" x="5" y="5" width="70" height="50" rx="8" fill="#2c3e50" stroke="#34495e" stroke-width="2" aria-label="Korpus wyświetlacza"/>
+  <rect class="display-screen" x="15" y="15" width="50" height="20" fill="#ecf0f1" rx="4" aria-label="Ekran wyświetlacza"/>
+  <text id="label" class="display-label editable-text" x="40" y="48" font-size="12" text-anchor="middle" fill="#bdc3c7" aria-label="Etykieta wyświetlacza" data-property="label">Panel</text>
+  <text id="value" class="display-value reading-text" x="40" y="28" font-size="14" text-anchor="middle" fill="#2c3e50" aria-label="Wartość wyświetlacza">Ready</text>
+</svg>

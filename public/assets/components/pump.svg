@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="70" height="60" viewBox="0 0 70 60" data-component-params="label,color,flowrate,flowratemin,flowratemax,unit,isactive,animationspeed,ison,isblinking,blinkrate">
+    <metadata>
+        <component id="pump-001" name="Centrifugal Pump" type="pump">
+            <parameters>
+                <label>P1</label>
+                <color>#16a085</color>
+                <flowRate>45</flowRate>
+                <flowRateMin>0</flowRateMin>
+                <flowRateMax>100</flowRateMax>
+                <unit>m³/h</unit>
+                <isActive>true</isActive>
+                <animationSpeed>1.0</animationSpeed>
+                <ison>false</ison><isblinking>false</isblinking><blinkrate>500</blinkrate></parameters>
+        </component>
+    </metadata>
+
+    <defs>
+        <script>
+        <![CDATA[
+            // Kod inicjalizujący pompę - uproszczony i bardziej niezawodny
+            (function() {
+                // Funkcja pomocnicza - znajdź najbliższy element SVG zawierający pompę
+                function findPumpSvg() {
+                    // 1. Próba przez document.currentScript (działa w IDE)
+                    var svg = document.currentScript ? document.currentScript.closest('svg') : null;
+                    
+                    // 2. Jeśli nie zadziałało, szukaj po selektorach klasy
+                    if (!svg) {
+                        var svgs = document.querySelectorAll('svg');
+                        for (var i = 0; i < svgs.length; i++) {
+                            var candidate = svgs[i];
+                            // Sprawdź czy to pompa szukając charakterystycznych elementów
+                            if (candidate.querySelector('.pump-rotor') || 
+                                candidate.querySelector('.pump-housing') || 
+                                candidate.querySelector('.pump-flow-text')) {
+                                svg = candidate;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    return svg;
+                }
+                
+                // Funkcja czytająca metadane z SVG
+                function getMetadata(svg) {
+                    try {
+                        var params = {
+                            flowRate: 45,
+                            flowRateUnit: ' m³/h',
+                            isOn: false,
+                            speed: 1.0
+                        };
+                        
+                        var metadata = svg.querySelector('metadata component parameters');
+                        if (metadata) {
+                            var flowRateEl = metadata.querySelector('flowRate');
+                            if (flowRateEl) params.flowRate = parseFloat(flowRateEl.textContent) || 45;
+                            
+                            var unitEl = metadata.querySelector('unit');
+                            if (unitEl) params.flowRateUnit = unitEl.textContent || ' m³/h';
+                            
+                            var isOnEl = metadata.querySelector('ison');
+                            if (isOnEl) params.isOn = isOnEl.textContent === 'true';
+                            
+                            var speedEl = metadata.querySelector('animationSpeed');
+                            if (speedEl) params.speed = parseFloat(speedEl.textContent) || 1.0;
+                        }
+                        
+                        return params;
+                    } catch(err) {
+                        console.error('Błąd odczytu metadanych pompy:', err);
+                        return {
+                            flowRate: 45,
+                            flowRateUnit: ' m³/h',
+                            isOn: false,
+                            speed: 1.0
+                        };
+                    }
+                }
+                
+                // Aktualizacja tekstu przepływu
+                function updateFlowText(svg, params) {
+                    var flowText = svg.querySelector('.pump-flow-text');
+                    if (flowText) {
+                        flowText.textContent = parseFloat(params.flowRate).toFixed(1) + params.flowRateUnit;
+                    }
+                }
+                
+                // Animacja pompy
+                function animatePump(svg, params) {
+                    // Wstrzymaj istniejącą animację
+                    if (svg._pumpAnimationId) {
+                        cancelAnimationFrame(svg._pumpAnimationId);
+                        svg._pumpAnimationId = null;
+                    }
+                    
+                    // Jeśli pompa jest wyłączona, nie uruchamiaj animacji
+                    if (!params.isOn) return;
+                    
+                    // Inicjalizacja kąta obrotu
+                    var angle = svg._pumpAngle || 0;
+                    var speed = parseFloat(params.speed) || 1.0;
+                    var rotor = svg.querySelector('.pump-rotor');
+                    
+                    // Funkcja animująca
+                    function animate() {
+                        if (!svg.isConnected) return;
+                        
+                        // Aktualizacja kąta
+                        angle += 2 * speed;
+                        if (angle >= 360) angle -= 360;
+                        svg._pumpAngle = angle;
+                        
+                        // Aktualizacja transformacji rotora
+                        if (rotor) {
+                            rotor.setAttribute('transform', 'rotate(' + angle + ' 35 30)');
+                        }
+                        
+                        // Kontynuacja animacji
+                        svg._pumpAnimationId = requestAnimationFrame(animate);
+                    }
+                    
+                    // Uruchom animację
+                    animate();
+                }
+                
+                // Przełączanie stanu pompy
+                function togglePump(svg) {
+                    var params = getMetadata(svg);
+                    params.isOn = !params.isOn;
+                    
+                    // Zapisz zmianę w metadanych
+                    var isOnEl = svg.querySelector('metadata component parameters ison');
+                    if (isOnEl) isOnEl.textContent = params.isOn ? 'true' : 'false';
+                    
+                    // Aktualizuj animację
+                    animatePump(svg, params);
+                }
+                
+                // Główna funkcja inicjalizująca
+                function initializePump() {
+                    // Znajdź SVG pompy
+                    var svg = findPumpSvg();
+                    if (!svg) {
+                        console.error('Nie znaleziono SVG pompy');
+                        return;
+                    }
+                    
+                    // Zabezpieczenie przed wielokrotną inicjalizacją
+                    if (svg.hasAttribute('data-pump-initialized')) return;
+                    svg.setAttribute('data-pump-initialized', 'true');
+                    
+                    // Unikalne ID dla tej instancji
+                    svg._pumpId = 'pump-' + Math.floor(Math.random() * 10000);
+                    console.log('Inicjalizacja pompy: ' + svg._pumpId);
+                    
+                    // Odczyt parametrów
+                    var params = getMetadata(svg);
+                    
+                    // Aktualizacja tekstu przepływu
+                    updateFlowText(svg, params);
+                    
+                    // Ustawienie kliknięcia dla przełączania
+                    var housing = svg.querySelector('.pump-housing');
+                    if (housing) {
+                        housing.addEventListener('click', function(e) {
+                            togglePump(svg);
+                            e.stopPropagation();
+                        });
+                    }
+                    
+                    // Uruchom animację jeśli pompa jest włączona
+                    animatePump(svg, params);
+                    
+                    // Obserwuj zmiany parametrów
+                    svg._pumpInterval = setInterval(function() {
+                        if (!svg.isConnected) {
+                            // Cleanup jeśli element został usunięty
+                            if (svg._pumpAnimationId) cancelAnimationFrame(svg._pumpAnimationId);
+                            clearInterval(svg._pumpInterval);
+                            return;
+                        }
+                        
+                        // Odczytaj aktualne parametry
+                        var currentParams = getMetadata(svg);
+                        
+                        // Aktualizuj tekst
+                        updateFlowText(svg, currentParams);
+                        
+                        // Sprawdź czy stan włączenia się zmienił
+                        if (svg._lastIsOn !== currentParams.isOn) {
+                            svg._lastIsOn = currentParams.isOn;
+                            animatePump(svg, currentParams);
+                        }
+                    }, 500);
+                }
+                
+                // Funkcja inicjalizująca - uruchom natychmiast
+                initializePump();
+                
+                // Zarejestruj funkcję w DOMContentLoaded dla wyeksportowanych SVG
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initializePump);
+                }
+                
+                // Wyeksportuj funkcję do globalnej przestrzeni nazw w zwykłym JavaScript (nie ES6)
+                if (typeof window !== 'undefined') {
+                    window.initPump = function(evt) {
+                        initializePump();
+                    };
+                }
+            })();
+        ]]>
+        </script>
+    </defs>
+
+    <circle cx="35" cy="30" r="25" fill="#16a085" stroke="#138a76" stroke-width="3" class="pump-housing" aria-label="Korpus pompy, kliknij aby przełączyć stan pompy"/>
+    <g id="impeller" class="pump-rotor" aria-label="Wirnik pompy, obraca się gdy pompa jest włączona">
+        <path d="M25 20 L45 40 M45 20 L25 40" stroke="white" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <circle id="statusIndicator" cx="55" cy="15" r="4" fill="#e74c3c" aria-label="Wskaźnik statusu pompy"/>
+    <text id="label" class="pump-label" x="35" y="20" font-size="12" text-anchor="middle" fill="white" aria-label="Nazwa pompy">P1</text>
+    <text id="value" class="pump-flow-text" x="35" y="50" font-size="12" text-anchor="middle" fill="white" aria-label="Wartość przepływu pompy">45 m³/h</text>
+</svg>

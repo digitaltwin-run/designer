@@ -1,0 +1,119 @@
+{
+  "components": [
+    {
+      "svg": "components/gauge.svg",
+      "name": "Analog Gauge",
+      "id": "gauge-001"
+    },
+    {
+      "svg": "components/led.svg",
+      "name": "Animated LED",
+      "id": "led-001"
+    },
+    {
+      "svg": "components/pump.svg",
+      "name": "Centrifugal Pump",
+      "id": "pump-001"
+    },
+    {
+      "svg": "components/valve.svg",
+      "name": "Control Valve",
+      "id": "valve-001"
+    },
+    {
+      "svg": "components/motor.svg",
+      "name": "Electric Motor",
+      "id": "motor-001"
+    },
+    {
+      "svg": "components/display.svg",
+      "name": "HTML Display",
+      "id": "display-001"
+    },
+    {
+      "svg": "components/modbus8adc.svg",
+      "name": "Modbus RTU Analog Input 8CH",
+      "id": "modbus-analog-8ch-001"
+    },
+    {
+      "svg": "components/modbus8i8o.svg",
+      "name": "Modbus RTU IO 8CH",
+      "id": "modbus-io-8ch-001"
+    },
+    {
+      "svg": "components/counter.svg",
+      "name": "Numeric Counter",
+      "id": "counter-001"
+    },
+    {
+      "svg": "components/button.svg",
+      "name": "Push Button",
+      "id": "button-001"
+    },
+    {
+      "svg": "components/rpi3b.svg",
+      "name": "Raspberry Pi 3B",
+      "id": "rpi-3b-001"
+    },
+    {
+      "svg": "components/rpi4b.svg",
+      "name": "Raspberry Pi 4 Model B",
+      "id": "rpi-4-001"
+    },
+    {
+      "svg": "components/rpi5b.svg",
+      "name": "Raspberry Pi 5",
+      "id": "rpi-5-001"
+    },
+    {
+      "svg": "components/rpizero2w.svg",
+      "name": "Raspberry Pi Zero 2 W",
+      "id": "rpi-zero2w-001"
+    },
+    {
+      "svg": "components/relay.svg",
+      "name": "Relay",
+      "id": "relay-001"
+    },
+    {
+      "svg": "components/knob.svg",
+      "name": "Rotary Knob",
+      "id": "knob-001"
+    },
+    {
+      "svg": "components/button-new.svg",
+      "name": "Round Button",
+      "id": "button-001"
+    },
+    {
+      "svg": "components/slider.svg",
+      "name": "Slider",
+      "id": "slider-001"
+    },
+    {
+      "svg": "components/button2.svg",
+      "name": "Square Button",
+      "id": "button-square-001"
+    },
+    {
+      "svg": "components/sensor.svg",
+      "name": "Temperature Sensor",
+      "id": "sensor-001"
+    },
+    {
+      "svg": "components/toggle.svg",
+      "name": "Toggle Button",
+      "id": "toggle-001"
+    },
+    {
+      "svg": "components/switch.svg",
+      "name": "Toggle Switch",
+      "id": "switch-001"
+    },
+    {
+      "svg": "components/USB2RS485.svg",
+      "name": "USB TO RS485 Converter",
+      "id": "usb-rs485-001"
+    }
+  ]
+}
