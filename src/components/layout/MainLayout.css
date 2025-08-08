@@ -1,0 +1,50 @@
+.main-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f9fafb;
+}
+
+.toolbar-container {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: white;
+}
+
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar-left {
+  flex-shrink: 0;
+  width: 320px;
+  background-color: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+}
+
+.canvas-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.right-panel {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  background-color: white;
+  border-left: 1px solid #e5e7eb;
+}
+
+.component-list-panel {
+  flex: 1;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.properties-panel {
+  flex: 1;
+}

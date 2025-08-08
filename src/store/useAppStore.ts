@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { AppState, Component, CanvasComponent, CanvasSettings, Selection, HistoryState, ToolbarTool } from '../types';
+import type { AppState, Component, CanvasComponent, CanvasSettings, Selection, HistoryState, ToolbarTool } from '../types';
 
 const initialCanvasSettings: CanvasSettings = {
   width: 1200,
@@ -62,7 +62,7 @@ interface AppStore extends AppState {
 
 export const useAppStore = create<AppStore>()(
   devtools(
-    immer((set, get) => ({
+    immer((set) => ({
       // Initial State
       availableComponents: [],
       canvasComponents: [],
@@ -111,13 +111,13 @@ export const useAppStore = create<AppStore>()(
 
       removeComponentFromCanvas: (componentId) =>
         set((state) => {
-          state.canvasComponents = state.canvasComponents.filter(c => c.id !== componentId);
-          state.selection.componentIds = state.selection.componentIds.filter(id => id !== componentId);
+          state.canvasComponents = state.canvasComponents.filter((c: CanvasComponent) => c.id !== componentId);
+          state.selection.componentIds = state.selection.componentIds.filter((id: string) => id !== componentId);
         }),
 
       updateCanvasComponent: (componentId, updates) =>
         set((state) => {
-          const component = state.canvasComponents.find(c => c.id === componentId);
+          const component = state.canvasComponents.find((c: CanvasComponent) => c.id === componentId);
           if (component) {
             Object.assign(component, updates);
           }
@@ -139,7 +139,7 @@ export const useAppStore = create<AppStore>()(
         set((state) => {
           const currentSelection = state.selection.componentIds;
           if (currentSelection.includes(componentId)) {
-            state.selection.componentIds = currentSelection.filter(id => id !== componentId);
+            state.selection.componentIds = currentSelection.filter((id: string) => id !== componentId);
           } else {
             state.selection.componentIds = [...currentSelection, componentId];
           }
@@ -166,9 +166,6 @@ export const useAppStore = create<AppStore>()(
       setActiveTool: (toolId) =>
         set((state) => {
           state.activeTool = toolId;
-          state.tools.forEach(tool => {
-            tool.active = tool.id === toolId;
-          });
         }),
 
       // UI

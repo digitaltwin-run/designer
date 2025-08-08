@@ -1,0 +1,88 @@
+.component-list {
+  padding: 16px;
+}
+
+.component-list-header {
+  margin-bottom: 16px;
+}
+
+.component-list-title {
+  font-size: 18px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.component-list-description {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.component-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.component-category {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.category-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.components-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.component-item {
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: move;
+  transition: all 0.2s;
+  background-color: white;
+}
+
+.component-item:hover {
+  background-color: #f9fafb;
+}
+
+.component-item.selected {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.component-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.component-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.component-icon img {
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+}
+
+.component-name {
+  font-size: 14px;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

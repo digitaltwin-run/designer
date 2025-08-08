@@ -1,0 +1,6 @@
+export default {
+  plugins: {
+    // tailwindcss: {}, // Disabled until PostCSS integration is fixed
+    autoprefixer: {},
+  },
+}
