@@ -5,19 +5,12 @@ import { Search, Filter, Grid, List } from 'lucide-react';
 import './Sidebar.css';
 
 export const Sidebar: React.FC = () => {
-  const { 
-    availableComponents,
-    searchQuery,
-    selectedCategory,
-    setSearchQuery,
-    setSelectedCategory
-  } = useAppStore(state => ({
-    availableComponents: state.availableComponents,
-    searchQuery: state.searchQuery,
-    selectedCategory: state.selectedCategory,
-    setSearchQuery: state.setSearchQuery,
-    setSelectedCategory: state.setSelectedCategory,
-  }));
+  // Use individual selectors to avoid object recreation and infinite re-render
+  const availableComponents = useAppStore(state => state.availableComponents);
+  const searchQuery = useAppStore(state => state.searchQuery);
+  const selectedCategory = useAppStore(state => state.selectedCategory);
+  const setSearchQuery = useAppStore(state => state.setSearchQuery);
+  const setSelectedCategory = useAppStore(state => state.setSelectedCategory);
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 

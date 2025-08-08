@@ -8,29 +8,17 @@ const iconMap = {
 };
 
 export const Toolbar: React.FC = () => {
-  const { 
-    tools, 
-    activeTool, 
-    setActiveTool,
-    undo,
-    redo,
-    history,
-    historyIndex,
-    toggleSidebar,
-    toggleProperties,
-    toggleComponentList
-  } = useAppStore(state => ({
-    tools: state.tools,
-    activeTool: state.activeTool,
-    setActiveTool: state.setActiveTool,
-    undo: state.undo,
-    redo: state.redo,
-    history: state.history,
-    historyIndex: state.historyIndex,
-    toggleSidebar: state.toggleSidebar,
-    toggleProperties: state.toggleProperties,
-    toggleComponentList: state.toggleComponentList,
-  }));
+  // Use individual selectors to avoid object recreation and infinite re-render
+  const tools = useAppStore(state => state.tools);
+  const activeTool = useAppStore(state => state.activeTool);
+  const setActiveTool = useAppStore(state => state.setActiveTool);
+  const undo = useAppStore(state => state.undo);
+  const redo = useAppStore(state => state.redo);
+  const history = useAppStore(state => state.history);
+  const historyIndex = useAppStore(state => state.historyIndex);
+  const toggleSidebar = useAppStore(state => state.toggleSidebar);
+  const toggleProperties = useAppStore(state => state.toggleProperties);
+  const toggleComponentList = useAppStore(state => state.toggleComponentList);
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;

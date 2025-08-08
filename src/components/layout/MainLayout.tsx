@@ -8,15 +8,10 @@ import { ComponentList } from '../sidebar/ComponentList';
 import './MainLayout.css';
 
 export const MainLayout: React.FC = () => {
-  const { 
-    sidebarVisible, 
-    propertiesVisible, 
-    componentListVisible 
-  } = useAppStore(state => ({
-    sidebarVisible: state.sidebarVisible,
-    propertiesVisible: state.propertiesVisible,
-    componentListVisible: state.componentListVisible,
-  }));
+  // Use individual selectors to avoid object recreation and infinite re-render
+  const sidebarVisible = useAppStore(state => state.sidebarVisible);
+  const propertiesVisible = useAppStore(state => state.propertiesVisible);
+  const componentListVisible = useAppStore(state => state.componentListVisible);
 
   return (
     <div className="main-layout">
