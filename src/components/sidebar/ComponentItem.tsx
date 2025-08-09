@@ -9,6 +9,26 @@ interface ComponentItemProps {
 }
 
 export const ComponentItem: React.FC<ComponentItemProps> = ({ component, viewMode }) => {
+  // Debug logging
+  console.log('🔧 ComponentItem rendering:', { 
+    id: component?.id, 
+    name: component?.name, 
+    svg: component?.svg,
+    tags: component?.tags,
+    viewMode 
+  });
+
+  // Safety checks
+  if (!component) {
+    console.error('❌ ComponentItem: Missing component prop');
+    return <div className="component-error">Missing component data</div>;
+  }
+
+  if (!component.id || !component.name) {
+    console.error('❌ ComponentItem: Invalid component data:', component);
+    return <div className="component-error">Invalid component: {component.id || 'no-id'}</div>;
+  }
+
   const [{ isDragging }, drag] = useDrag({
     type: 'component',
     item: { component },
@@ -16,11 +36,14 @@ export const ComponentItem: React.FC<ComponentItemProps> = ({ component, viewMod
       isDragging: monitor.isDragging(),
     }),
   });
+  
+  // Debug drag state
+  console.log('🔧 ComponentItem drag state:', { name: component.name, isDragging });
 
   if (viewMode === 'list') {
     return (
       <div
-        ref={drag}
+        ref={drag as any}
         className={`component-item-list ${
           isDragging ? 'dragging' : ''
         }`}
@@ -49,7 +72,7 @@ export const ComponentItem: React.FC<ComponentItemProps> = ({ component, viewMod
         </div>
 
         {/* Tags */}
-        {component.tags.length > 0 && (
+        {component.tags && component.tags.length > 0 && (
           <div className="component-tags-list">
             <span className="component-tag-list">
               {component.tags[0]}
@@ -64,7 +87,7 @@ export const ComponentItem: React.FC<ComponentItemProps> = ({ component, viewMod
   // Grid view
   return (
     <div
-      ref={drag}
+      ref={drag as any}
       className={`component-item-grid ${
         isDragging ? 'dragging' : ''
       }`}
@@ -110,7 +133,7 @@ export const ComponentItem: React.FC<ComponentItemProps> = ({ component, viewMod
             </span>
           )}
           
-          {component.tags.length > 0 && (
+          {component.tags && component.tags.length > 0 && (
             <div className="component-tag-count">
               {component.tags.length} tag{component.tags.length !== 1 ? 's' : ''}
             </div>

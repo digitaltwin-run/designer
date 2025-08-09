@@ -26,6 +26,7 @@ interface AppStore extends AppState {
   // Actions
   loadComponents: (components: Component[]) => void;
   addComponentToCanvas: (component: Component, position: { x: number; y: number }) => void;
+  addCanvasComponent: (canvasComponent: CanvasComponent) => void;
   removeComponentFromCanvas: (componentId: string) => void;
   updateCanvasComponent: (componentId: string, updates: Partial<CanvasComponent>) => void;
   
@@ -33,6 +34,8 @@ interface AppStore extends AppState {
   selectComponents: (componentIds: string[]) => void;
   clearSelection: () => void;
   toggleComponentSelection: (componentId: string) => void;
+  selectCanvasComponent: (componentId: string) => void;
+  clearCanvasSelection: () => void;
   
   // Canvas
   updateCanvasSettings: (settings: Partial<CanvasSettings>) => void;
@@ -66,18 +69,35 @@ export const useAppStore = create<AppStore>()(
       // Initial State
       availableComponents: [],
       canvasComponents: [],
+      selectedComponentIds: [],
+      selectedCanvasComponent: null,
       canvasSettings: initialCanvasSettings,
       selection: { componentIds: [] },
-      activeTool: 'select',
       tools: initialTools,
+      activeTool: 'select',
       sidebarVisible: true,
       propertiesVisible: true,
-      componentListVisible: true,
-      history: [],
-      historyIndex: -1,
+      componentListVisible: false,
+      
+      // Search & Filter
       searchQuery: '',
       selectedCategory: 'all',
+      
+      // History
+      history: [],
+      historyIndex: -1,
+      
+      // Search & Filter
+      searchQuery: '',
+      selectedCategory: 'all',
+      
+      // History - fix HistoryState type
+      history: { past: [], future: [], present: null },
+      historyIndex: -1,
+      
+      // Drag & Drop
       isDragging: false,
+      draggedComponent: undefined,
 
       // Actions
       loadComponents: (components) =>
@@ -168,22 +188,49 @@ export const useAppStore = create<AppStore>()(
           state.activeTool = toolId;
         }),
 
+      // Selection Actions
+      selectCanvasComponent: (componentId: string) => {
+        set((state) => {
+          const component = state.canvasComponents.find(c => c.id === componentId);
+          state.selectedCanvasComponent = component || null;
+          state.propertiesVisible = true; // Auto-show properties when selecting
+        });
+      },
+      
+      clearCanvasSelection: () => {
+        set((state) => {
+          state.selectedCanvasComponent = null;
+        });
+      },
+      
+      selectComponents: (componentIds: string[]) => {
+        set((state) => {
+          state.selection.componentIds = componentIds;
+        });
+      },
+      
+      clearSelection: () => {
+        set((state) => {
+          state.selection.componentIds = [];
+        });
+      },
+      
+      toggleComponentSelection: (componentId: string) => {
+        set((state) => {
+          const index = state.selection.componentIds.indexOf(componentId);
+          if (index > -1) {
+            state.selection.componentIds.splice(index, 1);
+          } else {
+            state.selection.componentIds.push(componentId);
+          }
+        });
+      },
+      
       // UI
-      toggleSidebar: () =>
-        set((state) => {
-          state.sidebarVisible = !state.sidebarVisible;
-        }),
-
-      toggleProperties: () =>
-        set((state) => {
-          state.propertiesVisible = !state.propertiesVisible;
-        }),
-
-      toggleComponentList: () =>
-        set((state) => {
-          state.componentListVisible = !state.componentListVisible;
-        }),
-
+      toggleSidebar: () => set((state) => ({ sidebarVisible: !state.sidebarVisible })),
+      toggleProperties: () => set((state) => ({ propertiesVisible: !state.propertiesVisible })),
+      toggleComponentList: () => set((state) => ({ componentListVisible: !state.componentListVisible })),
+      
       // Search & Filter
       setSearchQuery: (query) =>
         set((state) => {
@@ -242,6 +289,13 @@ export const useAppStore = create<AppStore>()(
         set((state) => {
           state.isDragging = isDragging;
           state.draggedComponent = component;
+        }),
+
+      // Canvas Components
+      addCanvasComponent: (canvasComponent: CanvasComponent) =>
+        set((state) => {
+          state.canvasComponents.push(canvasComponent);
+          console.log('✅ Added canvas component:', canvasComponent.id, 'Total:', state.canvasComponents.length);
         }),
     })),
     { name: 'digital-twin-designer' }

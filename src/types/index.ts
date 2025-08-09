@@ -73,7 +73,7 @@ export interface HistoryState {
   canvasComponents: CanvasComponent[];
   canvasSettings: CanvasSettings;
   timestamp: number;
-  action: string;
+  action?: string;
 }
 
 export interface AppState {
@@ -86,6 +86,8 @@ export interface AppState {
   
   // Selection & Tools
   selection: Selection;
+  selectedComponentIds: string[];
+  selectedCanvasComponent: CanvasComponent | null;
   activeTool: string;
   tools: ToolbarTool[];
   

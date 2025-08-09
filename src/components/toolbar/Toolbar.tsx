@@ -20,8 +20,9 @@ export const Toolbar: React.FC = () => {
   const toggleProperties = useAppStore(state => state.toggleProperties);
   const toggleComponentList = useAppStore(state => state.toggleComponentList);
 
-  const canUndo = historyIndex > 0;
-  const canRedo = historyIndex < history.length - 1;
+  // Safely handle history operations with explicit checks
+  const canUndo = typeof historyIndex === 'number' && historyIndex > 0;
+  const canRedo = typeof historyIndex === 'number' && Array.isArray(history) && historyIndex < history.length - 1;
 
   return (
     <div className="toolbar">
