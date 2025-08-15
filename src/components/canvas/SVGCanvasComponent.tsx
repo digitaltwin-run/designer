@@ -24,6 +24,8 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
 
   const [svgContent, setSvgContent] = useState<string>('');
   const [isLoaded, setIsLoaded] = useState(false);
@@ -66,12 +68,13 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
         : [0, 0, 100, 100];
 
       // Calculate scale to fit component dimensions 
-      const compWidth = canvasComponent.width || 100;
-      const compHeight = canvasComponent.height || 100;
+      const compWidth = canvasComponent.width || 80;
+      const compHeight = canvasComponent.height || 80;
       
       // Use uniform scaling to maintain aspect ratio
       const scale = Math.min(compWidth / vbWidth, compHeight / vbHeight);
-      console.log(`📏 Scaling component ${component.name}: viewBox(${vbWidth}x${vbHeight}) -> size(${compWidth}x${compHeight}) scale=${scale}`);
+      // Reduced console logging for performance
+      // console.log(`📏 Scaling component ${component.name}: viewBox(${vbWidth}x${vbHeight}) -> size(${compWidth}x${compHeight}) scale=${scale}`);
 
       // Create the SVG elements as JSX
       const svgChildren: React.ReactNode[] = [];
@@ -176,44 +179,78 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
   }, [canvasComponent.locked, canvasComponent.name, onSelect]);
 
   const handleMouseMove = useCallback((event: React.MouseEvent) => {
-    if (!isDragging || canvasComponent.locked) return;
+    if ((!isDragging && !isResizing) || canvasComponent.locked) return;
 
-    const deltaX = event.clientX - dragStart.x;
-    const deltaY = event.clientY - dragStart.y;
-    
-    // Apply snapping
-    const newX = snapToGrid(canvasComponent.x + deltaX);
-    const newY = snapToGrid(canvasComponent.y + deltaY);
-    
-    // Update position temporarily (visual feedback)
-    if (componentRef.current) {
-      componentRef.current.setAttribute('transform', `translate(${newX}, ${newY})`);
+    if (isResizing) {
+      // Handle resize
+      const deltaX = event.clientX - resizeStart.x;
+      const deltaY = event.clientY - resizeStart.y;
+      
+      const newWidth = Math.max(20, resizeStart.width + deltaX);
+      const newHeight = Math.max(20, resizeStart.height + deltaY);
+      
+      // Update size temporarily (visual feedback)
+      if (componentRef.current) {
+        const currentTransform = componentRef.current.getAttribute('transform') || '';
+        const scaleX = newWidth / 80;
+        const scaleY = newHeight / 80;
+        componentRef.current.setAttribute('transform', `${currentTransform.replace(/scale\([^)]*\)/, '')} scale(${scaleX}, ${scaleY})`);
+      }
+    } else if (isDragging) {
+      // Handle drag
+      const deltaX = event.clientX - dragStart.x;
+      const deltaY = event.clientY - dragStart.y;
+      
+      // Apply snapping
+      const newX = snapToGrid(canvasComponent.x + deltaX);
+      const newY = snapToGrid(canvasComponent.y + deltaY);
+      
+      // Update position temporarily (visual feedback)
+      if (componentRef.current) {
+        componentRef.current.setAttribute('transform', `translate(${newX}, ${newY})`);
+      }
     }
-  }, [isDragging, canvasComponent.locked, canvasComponent.x, canvasComponent.y, dragStart, snapToGrid]);
+  }, [isDragging, isResizing, canvasComponent.locked, canvasComponent.x, canvasComponent.y, dragStart, resizeStart, snapToGrid]);
 
   const handleMouseUp = useCallback((event: React.MouseEvent) => {
-    if (!isDragging) return;
-    
-    setIsDragging(false);
-    
-    const deltaX = event.clientX - dragStart.x;
-    const deltaY = event.clientY - dragStart.y;
-    
-    const newX = snapToGrid(canvasComponent.x + deltaX);
-    const newY = snapToGrid(canvasComponent.y + deltaY);
-    
-    // Update all selected components
-    const updates = selectedComponents.map(comp => ({
-      id: comp.id,
-      x: comp.id === canvasComponent.id ? newX : snapToGrid(comp.x + deltaX),
-      y: comp.id === canvasComponent.id ? newY : snapToGrid(comp.y + deltaY)
-    }));
-    
-    if (updates.length > 0) {
-      onMultiUpdate(updates);
-      console.log('✅ Updated positions for', updates.length, 'components');
+    if (isResizing) {
+      setIsResizing(false);
+      
+      const deltaX = event.clientX - resizeStart.x;
+      const deltaY = event.clientY - resizeStart.y;
+      
+      const newWidth = Math.max(20, resizeStart.width + deltaX);
+      const newHeight = Math.max(20, resizeStart.height + deltaY);
+      
+      // Update component dimensions
+      onUpdate({
+        width: newWidth,
+        height: newHeight
+      });
+      
+      console.log('✅ Updated component size:', newWidth, 'x', newHeight);
+    } else if (isDragging) {
+      setIsDragging(false);
+      
+      const deltaX = event.clientX - dragStart.x;
+      const deltaY = event.clientY - dragStart.y;
+      
+      const newX = snapToGrid(canvasComponent.x + deltaX);
+      const newY = snapToGrid(canvasComponent.y + deltaY);
+      
+      // Update all selected components
+      const updates = selectedComponents.map(comp => ({
+        id: comp.id,
+        x: comp.id === canvasComponent.id ? newX : snapToGrid(comp.x + deltaX),
+        y: comp.id === canvasComponent.id ? newY : snapToGrid(comp.y + deltaY)
+      }));
+      
+      if (updates.length > 0) {
+        onMultiUpdate(updates);
+        console.log('✅ Updated positions for', updates.length, 'components');
+      }
     }
-  }, [isDragging, dragStart, canvasComponent, selectedComponents, snapToGrid, onMultiUpdate]);
+  }, [isDragging, isResizing, dragStart, resizeStart, canvasComponent, selectedComponents, snapToGrid, onMultiUpdate, onUpdate]);
 
   // Resize handles
   const renderResizeHandles = () => {
@@ -238,7 +275,14 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
           style={{ cursor: 'se-resize' }}
           onMouseDown={(e) => {
             e.stopPropagation();
-            // TODO: Implement resize functionality
+            setIsResizing(true);
+            setResizeStart({
+              x: e.clientX,
+              y: e.clientY,
+              width: canvasComponent.width || 80,
+              height: canvasComponent.height || 80
+            });
+            console.log('🔧 Component resize started:', canvasComponent.name);
           }}
         />
       </g>

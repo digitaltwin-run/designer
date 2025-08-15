@@ -709,13 +709,8 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
               return null;
             }
             
-            console.log('🎨 Rendering component:', {
-              name: canvasComponent.name,
-              position: { x: canvasComponent.x, y: canvasComponent.y },
-              size: { width: canvasComponent.width, height: canvasComponent.height },
-              visible: canvasComponent.visible,
-              viewBox
-            });
+            // Reduced logging for performance
+            // console.log('🎨 Rendering component:', canvasComponent.name);
             
             return (
               <SVGCanvasComponent
