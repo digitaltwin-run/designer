@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { MousePointer, Hand, ZoomIn, Square, Circle, Move, RotateCw, Copy, Trash2, Undo, Redo, Save, Download, Settings } from 'lucide-react';
+import { MousePointer, Hand, ZoomIn, ZoomOut, RotateCcw, Square, Circle, Move, RotateCw, Copy, Trash2, Undo, Redo, Save, Download, Settings, Video } from 'lucide-react';
 import './Toolbar.css';
 
 const iconMap = {
@@ -91,9 +91,69 @@ export const Toolbar: React.FC = () => {
           </button>
           <button
             className="action-button"
-            title="Export"
+            title="Export SVG"
+            onClick={() => {
+              if ((window as any).exportCanvasToSVG) {
+                (window as any).exportCanvasToSVG();
+              } else {
+                console.error('Export function not available');
+              }
+            }}
           >
             <Download />
+          </button>
+          <button
+            className="action-button"
+            title="Export SVG with Video Recording (10s)"
+            onClick={() => {
+              if ((window as any).exportSVGWithVideo) {
+                (window as any).exportSVGWithVideo(10);
+              } else {
+                console.error('Video export function not available');
+              }
+            }}
+          >
+            <Video />
+          </button>
+        </div>
+
+        {/* Separator */}
+        <div className="toolbar-separator" />
+
+        {/* Zoom Controls */}
+        <div className="zoom-controls">
+          <button
+            className="action-button"
+            title="Zoom In"
+            onClick={() => {
+              if ((window as any).zoomIn) {
+                (window as any).zoomIn();
+              }
+            }}
+          >
+            <ZoomIn />
+          </button>
+          <button
+            className="action-button"
+            title="Zoom Out"
+            onClick={() => {
+              if ((window as any).zoomOut) {
+                (window as any).zoomOut();
+              }
+            }}
+          >
+            <ZoomOut />
+          </button>
+          <button
+            className="action-button"
+            title="Reset Zoom (1:1)"
+            onClick={() => {
+              if ((window as any).resetZoom) {
+                (window as any).resetZoom();
+              }
+            }}
+          >
+            <RotateCcw />
           </button>
         </div>
       </div>

@@ -1,10 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Stage, Layer, Group, Image, Rect, Circle, Line, Text } from 'react-konva';
 import { useDrop } from 'react-dnd';
-import { Stage, Layer, Rect, Text, Image, Line, Circle, Group } from 'react-konva';
 import { useAppStore } from '../../store/useAppStore';
+import { AnimatedSVGComponent } from './AnimatedSVGComponent';
 import type { Component } from '../../types';
 import useImage from 'use-image';
 import './Canvas.css';
+
+// List of SVG components that have embedded JavaScript and need AnimatedSVGComponent
+const ANIMATED_SVG_COMPONENTS = [
+  'led', 'relay', 'pump', 'slider', 'switch', 'motor', 'sensor', 'gauge', 'knob', 
+  'button-new', 'button', 'button2', 'counter', 'valve', 'display', 'toggle',
+  'modbus8i8o', 'modbus8adc', 'USB2RS485', 'rpi3b', 'rpi4b', 'rpi5b', 'rpizero2w'
+];
+
+// Helper function to check if component needs animated SVG rendering
+const needsAnimatedSVG = (component: Component): boolean => {
+  if (!component.svg) return false;
+  const filename = component.svg.split('/').pop()?.replace('.svg', '') || '';
+  return ANIMATED_SVG_COMPONENTS.includes(filename);
+};
 
 // Component to render individual SVG on canvas with resize handles
 const CanvasComponentItem: React.FC<{ 
@@ -12,11 +27,14 @@ const CanvasComponentItem: React.FC<{
   component: Component; 
   snapToGrid: (value: number) => number; 
   updateCanvasComponent: any;
+  updateMultipleComponents: (updates: { id: string; x: number; y: number }[]) => void;
   gridSize: number;
   isSelected: boolean;
-  onSelect: () => void;
-}> = ({ canvasComponent, component, snapToGrid, updateCanvasComponent, gridSize, isSelected, onSelect }) => {
+  selectedComponents: any[];
+  onSelect: (ctrlKey: boolean) => void;
+}> = ({ canvasComponent, component, snapToGrid, updateCanvasComponent, updateMultipleComponents, gridSize, isSelected, selectedComponents, onSelect }) => {
   const [image] = useImage(component.svg);
+  const isAnimatedSVG = needsAnimatedSVG(component);
   
   const handleResize = (newWidth: number, newHeight: number) => {
     // Calculate original aspect ratio
@@ -25,17 +43,15 @@ const CanvasComponentItem: React.FC<{
     // Use the larger dimension as the primary constraint for proportional scaling
     const primaryDimension = Math.max(newWidth, newHeight / aspectRatio);
     
-    // Calculate proportional dimensions
-    const proportionalWidth = primaryDimension;
-    const proportionalHeight = primaryDimension / aspectRatio;
-    
-    // Snap to grid increments while maintaining aspect ratio
-    const snappedWidth = Math.max(gridSize, Math.round(proportionalWidth / gridSize) * gridSize);
-    const snappedHeight = Math.max(gridSize, Math.round(proportionalHeight / gridSize) * gridSize);
+    // Snap to grid increments while maintaining aspect ratio - ensure minimum size
+    const minSize = gridSize * 2; // Minimum 2 grid units
+    const snappedWidth = Math.max(minSize, Math.round(primaryDimension / gridSize) * gridSize);
+    const snappedHeight = Math.max(minSize, Math.round((snappedWidth / aspectRatio) / gridSize) * gridSize);
     
     console.log('📍 Component resized proportionally to grid:', { 
-      width: snappedWidth, 
-      height: snappedHeight, 
+      original: { width: canvasComponent.width, height: canvasComponent.height },
+      raw: { width: newWidth, height: newHeight },
+      snapped: { width: snappedWidth, height: snappedHeight },
       aspectRatio: aspectRatio.toFixed(2) 
     });
     
@@ -45,6 +61,27 @@ const CanvasComponentItem: React.FC<{
     });
   };
   
+  // Handle animated SVG components
+  if (isAnimatedSVG) {
+    console.log('🎨 Rendering animated SVG component:', component.name);
+    return (
+      <AnimatedSVGComponent
+        svgUrl={component.svg}
+        x={canvasComponent.x}
+        y={canvasComponent.y}
+        width={canvasComponent.width}
+        height={canvasComponent.height}
+        visible={canvasComponent.visible !== false}
+        selected={isSelected}
+        onSelect={() => {
+          console.log('🖱️ Animated SVG clicked for selection:', canvasComponent.name);
+          onSelect(false); // For now, disable multi-select on animated SVGs
+        }}
+        className={`canvas-component ${isSelected ? 'selected' : ''}`}
+      />
+    );
+  }
+
   return (
     <Group>
       <Image
@@ -54,35 +91,57 @@ const CanvasComponentItem: React.FC<{
         width={canvasComponent.width}
         height={canvasComponent.height}
         draggable
+        visible={canvasComponent.visible !== false}
         onClick={(e) => {
           e.cancelBubble = true; // Prevent canvas panning
-          onSelect();
+          const ctrlKey = e.evt.ctrlKey || e.evt.metaKey; // Support both Ctrl and Cmd
+          console.log('🖱️ Component clicked for selection:', canvasComponent.name, 'ctrlKey:', ctrlKey);
+          onSelect(ctrlKey);
         }}
         onDragStart={(e) => {
           e.cancelBubble = true; // Prevent canvas panning during drag
+          console.log('🚀 Group drag started for', selectedComponents.length, 'components, primary:', canvasComponent.name);
         }}
         onDragMove={(e) => {
           e.cancelBubble = true; // Prevent canvas panning during drag
-          // Real-time grid snapping during drag
-          const snappedX = snapToGrid(e.target.x());
-          const snappedY = snapToGrid(e.target.y());
           
-          // Force snap to grid position during drag
+          // Calculate movement delta
+          const rawX = e.target.x();
+          const rawY = e.target.y();
+          
+          // Snap primary component to grid
+          const snappedX = snapToGrid(rawX);
+          const snappedY = snapToGrid(rawY);
+          const snappedDeltaX = snappedX - canvasComponent.x;
+          const snappedDeltaY = snappedY - canvasComponent.y;
+          
+          console.log('🔄 Group dragging:', selectedComponents.length, 'components, delta:', { x: snappedDeltaX, y: snappedDeltaY });
+          
+          // Apply snapped movement to primary component
           e.target.x(snappedX);
           e.target.y(snappedY);
+          
+          // Note: We'll update other selected components in onDragEnd to avoid conflicts
         }}
         onDragEnd={(e) => {
           e.cancelBubble = true; // Prevent canvas panning during drag
           const snappedX = snapToGrid(e.target.x());
           const snappedY = snapToGrid(e.target.y());
           
-          console.log('📍 Component moved to grid:', { x: snappedX, y: snappedY });
+          // Calculate final movement delta
+          const deltaX = snappedX - canvasComponent.x;
+          const deltaY = snappedY - canvasComponent.y;
           
-          // Update store with final position
-          updateCanvasComponent(canvasComponent.id, {
-            x: snappedX,
-            y: snappedY
-          });
+          console.log('🎯 Group drag ended:', selectedComponents.length, 'components moved by:', { deltaX, deltaY });
+          
+          // Update all selected components with the movement delta
+          const updates = selectedComponents.map(comp => ({
+            id: comp.id,
+            x: snapToGrid(comp.x + deltaX),
+            y: snapToGrid(comp.y + deltaY)
+          }));
+          
+          updateMultipleComponents(updates);
         }}
       />
       
@@ -113,28 +172,35 @@ const CanvasComponentItem: React.FC<{
             strokeWidth={2}
             draggable
             onDragMove={(e) => {
-              const newWidth = e.target.x() - canvasComponent.x;
-              const newHeight = e.target.y() - canvasComponent.y;
+              const rawWidth = e.target.x() - canvasComponent.x;
+              const rawHeight = e.target.y() - canvasComponent.y;
               
               // Calculate proportional dimensions during drag
               const aspectRatio = canvasComponent.width / canvasComponent.height;
-              const primaryDimension = Math.max(newWidth, newHeight / aspectRatio);
-              const proportionalWidth = primaryDimension;
-              const proportionalHeight = primaryDimension / aspectRatio;
+              const primaryDimension = Math.max(rawWidth, rawHeight / aspectRatio);
               
-              // Update visual feedback with proportional sizing
-              e.target.x(canvasComponent.x + proportionalWidth);
-              e.target.y(canvasComponent.y + proportionalHeight);
+              // Snap to grid increments while maintaining aspect ratio
+              const snappedWidth = Math.max(gridSize, Math.round(primaryDimension / gridSize) * gridSize);
+              const snappedHeight = snappedWidth / aspectRatio;
+              
+              console.log('🔄 Component resizing - raw:', { w: rawWidth, h: rawHeight }, 'snapped:', { w: snappedWidth, h: snappedHeight });
+              
+              // Update visual feedback with grid-snapped proportional sizing
+              e.target.x(canvasComponent.x + snappedWidth);
+              e.target.y(canvasComponent.y + snappedHeight);
             }}
             onDragEnd={(e) => {
-              const newWidth = e.target.x() - canvasComponent.x;
-              const newHeight = e.target.y() - canvasComponent.y;
+              const rawWidth = e.target.x() - canvasComponent.x;
+              const rawHeight = e.target.y() - canvasComponent.y;
               
-              handleResize(newWidth, newHeight);
+              console.log('🎯 Component resize end - handling with handleResize');
+              handleResize(rawWidth, rawHeight);
               
-              // Reset handle position to new proportional size
-              e.target.x(canvasComponent.x + canvasComponent.width);
-              e.target.y(canvasComponent.y + canvasComponent.height);
+              // Reset handle position to new proportional size after store update
+              setTimeout(() => {
+                e.target.x(canvasComponent.x + canvasComponent.width);
+                e.target.y(canvasComponent.y + canvasComponent.height);
+              }, 10);
             }}
           />
           
@@ -165,11 +231,12 @@ export const Canvas: React.FC = () => {
   const canvasSettings = useAppStore((state) => state.canvasSettings);
   const canvasComponents = useAppStore((state) => state.canvasComponents);
   const availableComponents = useAppStore((state) => state.availableComponents);
-  const selectedCanvasComponent = useAppStore((state) => state.selectedCanvasComponent);
+  const selectedComponentIds = useAppStore((state) => state.selection.componentIds);
   const addCanvasComponent = useAppStore((state) => state.addCanvasComponent);
   const updateCanvasComponent = useAppStore((state) => state.updateCanvasComponent);
-  const selectCanvasComponent = useAppStore((state) => state.selectCanvasComponent);
-  const clearCanvasSelection = useAppStore((state) => state.clearCanvasSelection);
+  const updateMultipleComponents = useAppStore((state) => state.updateMultipleComponents);
+  const selectComponents = useAppStore((state) => state.selectComponents);
+  const toggleComponentSelection = useAppStore((state) => state.toggleComponentSelection);
   
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -220,7 +287,7 @@ export const Canvas: React.FC = () => {
   
   const [{ isOver, canDrop }, drop] = useDrop({
     accept: 'component',
-    hover: (item: { component: Component }, monitor) => {
+    hover: (item: { component: Component }, _monitor) => {
       console.log('🎯 Canvas HOVER:', item.component.name, 'isOver:', isOver);
     },
     drop: (item: { component: Component }, monitor) => {
@@ -240,7 +307,7 @@ export const Canvas: React.FC = () => {
         const offset = monitor.getClientOffset();
         console.log('🔧 Client offset:', offset);
         
-        const canvasElement = document.querySelector('.canvas-stage');
+        const canvasElement = document.querySelector('.canvas-container');
         console.log('🔧 Canvas element found:', !!canvasElement);
         
         if (offset && canvasElement) {
@@ -262,6 +329,12 @@ export const Canvas: React.FC = () => {
             id: `${item.component.id}-${Date.now()}`, // Unique ID for each instance
             componentId: item.component.id,
             name: item.component.name,
+            category: item.component.category,
+            description: item.component.description,
+            tags: item.component.tags,
+            version: item.component.version,
+            author: item.component.author,
+            license: item.component.license,
             x: snappedX,
             y: snappedY,
             width: canvasSettings.gridSize * 2, // Default 2 grid units wide
@@ -272,6 +345,8 @@ export const Canvas: React.FC = () => {
             opacity: 1,
             visible: true,
             locked: false,
+            selected: false,
+            data: {},
             properties: {},
             svg: item.component.svg,
             zIndex: 1
@@ -389,9 +464,21 @@ export const Canvas: React.FC = () => {
                 component={component}
                 snapToGrid={snapToGrid}
                 updateCanvasComponent={updateCanvasComponent}
+                updateMultipleComponents={updateMultipleComponents}
                 gridSize={canvasSettings.gridSize}
-                isSelected={selectedCanvasComponent?.id === canvasComponent.id}
-                onSelect={() => selectCanvasComponent(canvasComponent.id)}
+                isSelected={selectedComponentIds.includes(canvasComponent.id)}
+                selectedComponents={canvasComponents.filter(c => selectedComponentIds.includes(c.id))}
+                onSelect={(ctrlKey: boolean) => {
+                  if (ctrlKey) {
+                    // Toggle selection with Ctrl/Cmd
+                    toggleComponentSelection(canvasComponent.id);
+                    console.log('🔄 Toggled selection for:', canvasComponent.name);
+                  } else {
+                    // Single selection without Ctrl/Cmd
+                    selectComponents([canvasComponent.id]);
+                    console.log('🎯 Selected single component:', canvasComponent.name);
+                  }
+                }}
               />
             );
           })}

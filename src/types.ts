@@ -22,16 +22,24 @@ export interface ComponentParameter {
   children?: ComponentParameter[];
 }
 
-export interface CanvasComponent extends Omit<Component, 'parameters'> {
+export interface CanvasComponent extends Omit<Component, 'parameters' | 'svg'> {
+  componentId: string; // Reference to the original component
+  svg: string; // Override svg to ensure it's always required
   x: number;
   y: number;
   width?: number;
   height?: number;
   rotation?: number;
+  scaleX?: number;
+  scaleY?: number;
+  opacity?: number;
+  visible?: boolean;
+  locked?: boolean;
   zIndex: number;
   selected?: boolean;
   data: Record<string, any>;
   parameters?: Record<string, any>;
+  properties?: Record<string, any>;
 }
 
 export interface CanvasSettings {
@@ -49,10 +57,11 @@ export interface CanvasSettings {
 
 export interface Selection {
   componentIds: string[];
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
+  startX?: number;
+  startY?: number;
+  endX?: number;
+  endY?: number;
+  bounds?: any;
 }
 
 export interface HistoryState {
@@ -75,6 +84,8 @@ export interface AppState {
   
   // Selection
   selection: Selection;
+  selectedComponentIds: string[];
+  selectedCanvasComponent: CanvasComponent | null;
   
   // Canvas
   canvasSettings: CanvasSettings;
@@ -87,6 +98,7 @@ export interface AppState {
   sidebarVisible: boolean;
   propertiesVisible: boolean;
   componentListVisible: boolean;
+  layersVisible: boolean;
   
   // Search & Filter
   searchQuery: string;
@@ -98,4 +110,5 @@ export interface AppState {
   // Drag & Drop
   isDragging: boolean;
   draggingComponent: Component | null;
+  draggedComponent?: Component;
 }

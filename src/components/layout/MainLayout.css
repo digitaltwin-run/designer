@@ -40,6 +40,11 @@
   border-left: 1px solid #e5e7eb;
 }
 
+.layers-panel-container {
+  flex: 0 0 auto;
+  border-bottom: 1px solid #e5e7eb;
+}
+
 .component-list-panel {
   flex: 1;
   border-bottom: 1px solid #e5e7eb;

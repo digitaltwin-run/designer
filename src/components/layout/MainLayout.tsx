@@ -2,9 +2,10 @@ import React from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Toolbar } from '../toolbar/Toolbar';
 import { Sidebar } from '../sidebar/Sidebar';
-import { Canvas } from '../canvas/Canvas';
+import { SVGCanvas } from '../canvas/SVGCanvas';
 import { PropertiesPanel } from '../properties/PropertiesPanel';
 import { ComponentList } from '../sidebar/ComponentList';
+import { LayersPanel } from '../layers/LayersPanel';
 import './MainLayout.css';
 
 export const MainLayout: React.FC = () => {
@@ -12,6 +13,7 @@ export const MainLayout: React.FC = () => {
   const sidebarVisible = useAppStore(state => state.sidebarVisible);
   const propertiesVisible = useAppStore(state => state.propertiesVisible);
   const componentListVisible = useAppStore(state => state.componentListVisible);
+  const layersVisible = useAppStore(state => state.layersVisible || true); // Default to visible
 
   return (
     <div className="main-layout">
@@ -31,11 +33,18 @@ export const MainLayout: React.FC = () => {
 
         {/* Center - Canvas Area */}
         <div className="canvas-container">
-          <Canvas />
+          <SVGCanvas />
         </div>
 
-        {/* Right Panel - Properties & Component List */}
+        {/* Right Panel - Properties, Component List & Layers */}
         <div className="right-panel">
+          {/* Layers Panel */}
+          {layersVisible && (
+            <div className="layers-panel-container">
+              <LayersPanel />
+            </div>
+          )}
+          
           {/* Component List Panel */}
           {componentListVisible && (
             <div className="component-list-panel">

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { AppState, Component, CanvasComponent, CanvasSettings, Selection, HistoryState, ToolbarTool } from '../types';
+import type { AppState, Component, CanvasComponent, CanvasSettings, ToolbarTool } from '../types';
 
 const initialCanvasSettings: CanvasSettings = {
   width: 1200,
@@ -22,13 +22,26 @@ const initialTools: ToolbarTool[] = [
   { id: 'zoom', name: 'Zoom', icon: 'ZoomIn', active: false },
 ];
 
-interface AppStore extends AppState {
+// Define a simplified history state for array-based history
+export interface SimpleHistoryState {
+  canvasComponents: CanvasComponent[];
+  canvasSettings: CanvasSettings;
+  timestamp: number;
+  action: string;
+}
+
+interface AppStore extends Omit<AppState, 'history'> {
+  // Override history with array-based implementation
+  history: SimpleHistoryState[];
+  historyIndex: number;
+  
   // Actions
   loadComponents: (components: Component[]) => void;
   addComponentToCanvas: (component: Component, position: { x: number; y: number }) => void;
   addCanvasComponent: (canvasComponent: CanvasComponent) => void;
   removeComponentFromCanvas: (componentId: string) => void;
   updateCanvasComponent: (componentId: string, updates: Partial<CanvasComponent>) => void;
+  updateMultipleComponents: (updates: { id: string; x: number; y: number }[]) => void;
   
   // Selection
   selectComponents: (componentIds: string[]) => void;
@@ -49,6 +62,7 @@ interface AppStore extends AppState {
   toggleSidebar: () => void;
   toggleProperties: () => void;
   toggleComponentList: () => void;
+  toggleLayers: () => void;
   
   // Search & Filter
   setSearchQuery: (query: string) => void;
@@ -78,25 +92,19 @@ export const useAppStore = create<AppStore>()(
       sidebarVisible: true,
       propertiesVisible: true,
       componentListVisible: false,
+      layersVisible: true,
       
       // Search & Filter
       searchQuery: '',
       selectedCategory: 'all',
       
-      // History
+      // History - properly typed as array-based history
       history: [],
-      historyIndex: -1,
-      
-      // Search & Filter
-      searchQuery: '',
-      selectedCategory: 'all',
-      
-      // History - fix HistoryState type
-      history: { past: [], future: [], present: null },
       historyIndex: -1,
       
       // Drag & Drop
       isDragging: false,
+      draggingComponent: null,
       draggedComponent: undefined,
 
       // Actions
@@ -111,6 +119,13 @@ export const useAppStore = create<AppStore>()(
             id: `${component.id}_${Date.now()}`,
             componentId: component.id,
             name: component.name,
+            category: component.category,
+            description: component.description,
+            svg: component.svg,
+            tags: component.tags,
+            version: component.version,
+            author: component.author,
+            license: component.license,
             x: position.x,
             y: position.y,
             width: 100,
@@ -121,9 +136,10 @@ export const useAppStore = create<AppStore>()(
             opacity: 1,
             visible: true,
             locked: false,
-            properties: {},
-            svg: component.svg,
             zIndex: state.canvasComponents.length,
+            selected: false,
+            data: {},
+            properties: {},
           };
           state.canvasComponents.push(newComponent);
           state.selection.componentIds = [newComponent.id];
@@ -141,6 +157,18 @@ export const useAppStore = create<AppStore>()(
           if (component) {
             Object.assign(component, updates);
           }
+        }),
+
+      updateMultipleComponents: (updates) =>
+        set((state) => {
+          updates.forEach(({ id, x, y }) => {
+            const component = state.canvasComponents.find((c: CanvasComponent) => c.id === id);
+            if (component) {
+              component.x = x;
+              component.y = y;
+            }
+          });
+          console.log('✅ Updated', updates.length, 'components positions');
         }),
 
       // Selection
@@ -203,19 +231,22 @@ export const useAppStore = create<AppStore>()(
         });
       },
       
-      selectComponents: (componentIds: string[]) => {
+      selectComponents2: (componentIds: string[]) => {
         set((state) => {
           state.selection.componentIds = componentIds;
         });
       },
       
-      clearSelection: () => {
+      clearSelection2: () => {
         set((state) => {
           state.selection.componentIds = [];
+          if (state.selection.bounds) {
+            state.selection.bounds = undefined;
+          }
         });
       },
       
-      toggleComponentSelection: (componentId: string) => {
+      toggleComponentSelection2: (componentId: string) => {
         set((state) => {
           const index = state.selection.componentIds.indexOf(componentId);
           if (index > -1) {
@@ -230,6 +261,7 @@ export const useAppStore = create<AppStore>()(
       toggleSidebar: () => set((state) => ({ sidebarVisible: !state.sidebarVisible })),
       toggleProperties: () => set((state) => ({ propertiesVisible: !state.propertiesVisible })),
       toggleComponentList: () => set((state) => ({ componentListVisible: !state.componentListVisible })),
+      toggleLayers: () => set((state) => ({ layersVisible: !state.layersVisible })),
       
       // Search & Filter
       setSearchQuery: (query) =>
@@ -245,7 +277,7 @@ export const useAppStore = create<AppStore>()(
       // History
       saveToHistory: (action) =>
         set((state) => {
-          const currentState: HistoryState = {
+          const currentState: SimpleHistoryState = {
             canvasComponents: JSON.parse(JSON.stringify(state.canvasComponents)),
             canvasSettings: JSON.parse(JSON.stringify(state.canvasSettings)),
             timestamp: Date.now(),
@@ -288,6 +320,7 @@ export const useAppStore = create<AppStore>()(
       setDragging: (isDragging, component) =>
         set((state) => {
           state.isDragging = isDragging;
+          state.draggingComponent = component || null;
           state.draggedComponent = component;
         }),
 
