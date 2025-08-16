@@ -213,8 +213,11 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
       const deltaX = (event.clientX - resizeStart.x) * scaleX;
       const deltaY = (event.clientY - resizeStart.y) * scaleY;
       
-      const newWidth = Math.max(20, resizeStart.width + deltaX);
-      const newHeight = Math.max(20, resizeStart.height + deltaY);
+      // Snap width/height to grid step
+      const rawWidth = resizeStart.width + deltaX;
+      const rawHeight = resizeStart.height + deltaY;
+      const newWidth = Math.max(20, snapToGrid(rawWidth));
+      const newHeight = Math.max(20, snapToGrid(rawHeight));
       
       // Update size temporarily (visual feedback)
       if (componentRef.current) {
@@ -260,8 +263,11 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
       const deltaX = (event.clientX - resizeStart.x) * scaleX;
       const deltaY = (event.clientY - resizeStart.y) * scaleY;
       
-      const newWidth = Math.max(20, resizeStart.width + deltaX);
-      const newHeight = Math.max(20, resizeStart.height + deltaY);
+      // Snap final size to grid step
+      const rawWidth = resizeStart.width + deltaX;
+      const rawHeight = resizeStart.height + deltaY;
+      const newWidth = Math.max(20, snapToGrid(rawWidth));
+      const newHeight = Math.max(20, snapToGrid(rawHeight));
       
       // Update component dimensions
       onUpdate({

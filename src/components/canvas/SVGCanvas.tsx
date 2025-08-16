@@ -19,7 +19,7 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width, height });
-  const [zoom, setZoom] = useState(1);
+  const [, setZoom] = useState(1);
   const [draggedComponent, setDraggedComponent] = useState<Component | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
@@ -31,6 +31,7 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
   const updateMultipleComponents = useAppStore(state => state.updateMultipleComponents);
   const selectComponents = useAppStore(state => state.selectComponents);
   const toggleComponentSelection = useAppStore(state => state.toggleComponentSelection);
+  const removeComponentFromCanvas = useAppStore(state => state.removeComponentFromCanvas);
   const canvasSettings = useAppStore(state => state.canvasSettings);
 
   const gridSize = canvasSettings.gridSize;
@@ -40,16 +41,24 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
     return Math.round(value / gridSize) * gridSize;
   }, [gridSize]);
 
-  // Zoom functions - zoom around canvas center, not current viewBox center
+  // Zoom functions - step-based: change visible width by exactly one grid step per zoom action
+  const computeSteppedZoom = useCallback((direction: 'in' | 'out') => {
+    const currentViewWidth = viewBox.width;
+    const minViewWidth = gridSize; // do not zoom in beyond one grid cell visible
+    const desiredViewWidth = direction === 'in'
+      ? Math.max(minViewWidth, currentViewWidth - gridSize)
+      : currentViewWidth + gridSize;
+    const newZoom = width / desiredViewWidth;
+    return Math.max(0.1, Math.min(5, newZoom));
+  }, [viewBox.width, gridSize, width]);
+
+  // Zoom around canvas center (width/2, height/2) using stepped zoom
   const zoomIn = useCallback(() => {
-    const newZoom = Math.min(zoom * 1.2, 5);
+    const newZoom = computeSteppedZoom('in');
     setZoom(newZoom);
     
-    // Calculate new viewBox dimensions
     const newWidth = width / newZoom;
     const newHeight = height / newZoom;
-    
-    // Center on canvas center (width/2, height/2) instead of current viewBox center
     const canvasCenterX = width / 2;
     const canvasCenterY = height / 2;
     
@@ -60,19 +69,16 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
       height: newHeight
     };
     
-    console.log('🔍 Zoom In:', { zoom: newZoom, oldViewBox: viewBox, newViewBox, canvasCenter: { x: canvasCenterX, y: canvasCenterY } });
+    console.log('🔍 Zoom In (stepped):', { zoom: newZoom, oldViewBox: viewBox, newViewBox, gridSize });
     setViewBox(newViewBox);
-  }, [zoom, width, height, viewBox]);
+  }, [computeSteppedZoom, width, height, viewBox, gridSize]);
 
   const zoomOut = useCallback(() => {
-    const newZoom = Math.max(zoom / 1.2, 0.1);
+    const newZoom = computeSteppedZoom('out');
     setZoom(newZoom);
     
-    // Calculate new viewBox dimensions
     const newWidth = width / newZoom;
     const newHeight = height / newZoom;
-    
-    // Center on canvas center (width/2, height/2) instead of current viewBox center
     const canvasCenterX = width / 2;
     const canvasCenterY = height / 2;
     
@@ -83,9 +89,9 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
       height: newHeight
     };
     
-    console.log('🔍 Zoom Out:', { zoom: newZoom, oldViewBox: viewBox, newViewBox, canvasCenter: { x: canvasCenterX, y: canvasCenterY } });
+    console.log('🔍 Zoom Out (stepped):', { zoom: newZoom, oldViewBox: viewBox, newViewBox, gridSize });
     setViewBox(newViewBox);
-  }, [zoom, width, height, viewBox]);
+  }, [computeSteppedZoom, width, height, viewBox, gridSize]);
 
   const resetZoom = useCallback(() => {
     setZoom(1);
@@ -639,6 +645,30 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
       delete (window as any).exportSVGWithVideo;
     };
   }, [exportToSVG, exportSVGWithVideo]);
+
+  // Keyboard shortcuts: Delete/Backspace to remove selected components
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInput = !!target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
+      );
+      if (isInput) return;
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedComponentIds.length > 0) {
+          selectedComponentIds.forEach((id) => removeComponentFromCanvas(id));
+          selectComponents([]);
+          e.preventDefault();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectedComponentIds, removeComponentFromCanvas, selectComponents]);
 
   const [{ canDrop, isOver }, drop] = useDrop({
     accept: 'component',
