@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import type { Component, CanvasComponent } from '../../types';
+import { useAppStore } from '../../store/useAppStore';
 
 interface SVGCanvasComponentProps {
   canvasComponent: CanvasComponent;
@@ -9,7 +10,6 @@ interface SVGCanvasComponentProps {
   onSelect: (multiSelect: boolean) => void;
   onUpdate: (updates: Partial<CanvasComponent>) => void;
   onMultiUpdate: (updates: { id: string; x: number; y: number }[]) => void;
-  selectedComponents: CanvasComponent[];
 }
 
 export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
@@ -20,7 +20,7 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
   onSelect,
   onUpdate,
   onMultiUpdate,
-  selectedComponents
+  
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -30,6 +30,17 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
   const [svgContent, setSvgContent] = useState<string>('');
   const [isLoaded, setIsLoaded] = useState(false);
   const componentRef = useRef<SVGGElement>(null);
+  // Refs to reflect latest flags for global event listeners
+  const isDraggingRef = useRef(false);
+  const isResizingRef = useRef(false);
+
+  useEffect(() => {
+    isDraggingRef.current = isDragging;
+  }, [isDragging]);
+
+  useEffect(() => {
+    isResizingRef.current = isResizing;
+  }, [isResizing]);
 
   // Load SVG content
   useEffect(() => {
@@ -173,18 +184,34 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
     onSelect(isMultiSelect);
     
     setIsDragging(true);
+    isDraggingRef.current = true;
     setDragStart({ x: event.clientX, y: event.clientY });
     
     console.log('🖱️ Component drag started:', canvasComponent.name, 'multi-select:', isMultiSelect);
+    // Attach window listeners to ensure mouseup is captured even if pointer leaves the element
+    const onMove = (e: MouseEvent) => handleMouseMove(e as any);
+    const onUp = (e: MouseEvent) => {
+      handleMouseUp(e as any);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   }, [canvasComponent.locked, canvasComponent.name, onSelect]);
 
   const handleMouseMove = useCallback((event: React.MouseEvent) => {
-    if ((!isDragging && !isResizing) || canvasComponent.locked) return;
+    if ((!isDraggingRef.current && !isResizingRef.current) || canvasComponent.locked) return;
 
-    if (isResizing) {
+    if (isResizingRef.current) {
       // Handle resize
-      const deltaX = event.clientX - resizeStart.x;
-      const deltaY = event.clientY - resizeStart.y;
+      // Convert client pixel delta to SVG coordinate delta
+      const svg = componentRef.current?.ownerSVGElement;
+      const rect = svg?.getBoundingClientRect();
+      const vb = svg?.viewBox.baseVal;
+      const scaleX = rect && vb ? vb.width / rect.width : 1;
+      const scaleY = rect && vb ? vb.height / rect.height : 1;
+      const deltaX = (event.clientX - resizeStart.x) * scaleX;
+      const deltaY = (event.clientY - resizeStart.y) * scaleY;
       
       const newWidth = Math.max(20, resizeStart.width + deltaX);
       const newHeight = Math.max(20, resizeStart.height + deltaY);
@@ -192,14 +219,22 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
       // Update size temporarily (visual feedback)
       if (componentRef.current) {
         const currentTransform = componentRef.current.getAttribute('transform') || '';
-        const scaleX = newWidth / 80;
-        const scaleY = newHeight / 80;
-        componentRef.current.setAttribute('transform', `${currentTransform.replace(/scale\([^)]*\)/, '')} scale(${scaleX}, ${scaleY})`);
+        const baseW = canvasComponent.width || 80;
+        const baseH = canvasComponent.height || 80;
+        const sx = newWidth / baseW;
+        const sy = newHeight / baseH;
+        componentRef.current.setAttribute('transform', `${currentTransform.replace(/scale\([^)]*\)/, '')} scale(${sx}, ${sy})`);
       }
-    } else if (isDragging) {
+    } else if (isDraggingRef.current) {
       // Handle drag
-      const deltaX = event.clientX - dragStart.x;
-      const deltaY = event.clientY - dragStart.y;
+      // Convert client pixel delta to SVG coordinate delta
+      const svg = componentRef.current?.ownerSVGElement;
+      const rect = svg?.getBoundingClientRect();
+      const vb = svg?.viewBox.baseVal;
+      const scaleX = rect && vb ? vb.width / rect.width : 1;
+      const scaleY = rect && vb ? vb.height / rect.height : 1;
+      const deltaX = (event.clientX - dragStart.x) * scaleX;
+      const deltaY = (event.clientY - dragStart.y) * scaleY;
       
       // Apply snapping
       const newX = snapToGrid(canvasComponent.x + deltaX);
@@ -210,14 +245,20 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
         componentRef.current.setAttribute('transform', `translate(${newX}, ${newY})`);
       }
     }
-  }, [isDragging, isResizing, canvasComponent.locked, canvasComponent.x, canvasComponent.y, dragStart, resizeStart, snapToGrid]);
+  }, [canvasComponent.locked, canvasComponent.x, canvasComponent.y, dragStart, resizeStart, snapToGrid]);
 
   const handleMouseUp = useCallback((event: React.MouseEvent) => {
-    if (isResizing) {
+    if (isResizingRef.current) {
       setIsResizing(false);
-      
-      const deltaX = event.clientX - resizeStart.x;
-      const deltaY = event.clientY - resizeStart.y;
+      isResizingRef.current = false;
+      // Convert client pixel delta to SVG coordinate delta
+      const svg = componentRef.current?.ownerSVGElement;
+      const rect = svg?.getBoundingClientRect();
+      const vb = svg?.viewBox.baseVal;
+      const scaleX = rect && vb ? vb.width / rect.width : 1;
+      const scaleY = rect && vb ? vb.height / rect.height : 1;
+      const deltaX = (event.clientX - resizeStart.x) * scaleX;
+      const deltaY = (event.clientY - resizeStart.y) * scaleY;
       
       const newWidth = Math.max(20, resizeStart.width + deltaX);
       const newHeight = Math.max(20, resizeStart.height + deltaY);
@@ -229,17 +270,31 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
       });
       
       console.log('✅ Updated component size:', newWidth, 'x', newHeight);
-    } else if (isDragging) {
+      // Clear preview scaling (keep translate only) – re-render will set correct transform
+      if (componentRef.current) {
+        componentRef.current.setAttribute('transform', `translate(${canvasComponent.x}, ${canvasComponent.y})`);
+      }
+    } else if (isDraggingRef.current) {
       setIsDragging(false);
+      isDraggingRef.current = false;
       
-      const deltaX = event.clientX - dragStart.x;
-      const deltaY = event.clientY - dragStart.y;
+      // Derive movement delta from the element's current transform (SVG units),
+      // avoiding mismatches between client pixels and SVG viewBox coordinates.
+      const currentTransform = componentRef.current?.getAttribute('transform') || '';
+      const match = /translate\(([-0-9.]+),\s*([-0-9.]+)\)/.exec(currentTransform);
+      const currentX = match ? Number(match[1]) : canvasComponent.x;
+      const currentY = match ? Number(match[2]) : canvasComponent.y;
+      const deltaX = currentX - canvasComponent.x;
+      const deltaY = currentY - canvasComponent.y;
       
-      const newX = snapToGrid(canvasComponent.x + deltaX);
-      const newY = snapToGrid(canvasComponent.y + deltaY);
+      const newX = snapToGrid(currentX);
+      const newY = snapToGrid(currentY);
       
-      // Update all selected components
-      const updates = selectedComponents.map(comp => ({
+      // Update all selected components (read latest selection from store to avoid stale props)
+      const state = useAppStore.getState();
+      const ids = state.selection.componentIds;
+      const allSelected = state.canvasComponents.filter(c => ids.includes(c.id));
+      const updates = allSelected.map(comp => ({
         id: comp.id,
         x: comp.id === canvasComponent.id ? newX : snapToGrid(comp.x + deltaX),
         y: comp.id === canvasComponent.id ? newY : snapToGrid(comp.y + deltaY)
@@ -250,7 +305,7 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
         console.log('✅ Updated positions for', updates.length, 'components');
       }
     }
-  }, [isDragging, isResizing, dragStart, resizeStart, canvasComponent, selectedComponents, snapToGrid, onMultiUpdate, onUpdate]);
+  }, [dragStart, resizeStart, canvasComponent, snapToGrid, onMultiUpdate, onUpdate]);
 
   // Resize handles
   const renderResizeHandles = () => {
@@ -273,9 +328,14 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
           stroke="#ffffff"
           strokeWidth="2"
           style={{ cursor: 'se-resize' }}
+          data-testid="resize-handle-se"
+          data-component-id={canvasComponent.id}
+          data-component-type={canvasComponent.componentId}
           onMouseDown={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             setIsResizing(true);
+            isResizingRef.current = true;
             setResizeStart({
               x: e.clientX,
               y: e.clientY,
@@ -283,6 +343,15 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
               height: canvasComponent.height || 80
             });
             console.log('🔧 Component resize started:', canvasComponent.name);
+            // Attach window listeners so resizing continues outside the handle
+            const onMove = (evt: MouseEvent) => handleMouseMove(evt as any);
+            const onUp = (evt: MouseEvent) => {
+              handleMouseUp(evt as any);
+              window.removeEventListener('mousemove', onMove);
+              window.removeEventListener('mouseup', onUp);
+            };
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
           }}
         />
       </g>
@@ -323,6 +392,10 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
         className={`svg-canvas-component ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
         data-component-id={canvasComponent.id}
         data-component-name={canvasComponent.name}
+        data-component-type={canvasComponent.componentId}
+        data-component-width={(canvasComponent.width || 80).toString()}
+        data-component-height={(canvasComponent.height || 80).toString()}
+        data-testid="canvas-component"
         transform={`translate(${canvasComponent.x}, ${canvasComponent.y})`}
         style={{
           opacity: canvasComponent.visible ? 1 : 0.3,
@@ -346,6 +419,7 @@ export const SVGCanvasComponent: React.FC<SVGCanvasComponentProps> = ({
             strokeDasharray="5,5"
             rx="2"
             opacity="0.8"
+            data-testid="selection-border"
           />
         )}
         

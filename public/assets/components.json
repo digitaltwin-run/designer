@@ -81,19 +81,9 @@
       "id": "knob-001"
     },
     {
-      "svg": "components/button-new.svg",
-      "name": "Round Button",
-      "id": "button-001"
-    },
-    {
       "svg": "components/slider.svg",
       "name": "Slider",
       "id": "slider-001"
-    },
-    {
-      "svg": "components/button2.svg",
-      "name": "Square Button",
-      "id": "button-square-001"
     },
     {
       "svg": "components/sensor.svg",

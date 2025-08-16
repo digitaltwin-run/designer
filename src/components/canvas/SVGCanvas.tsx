@@ -94,6 +94,53 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
     setViewBox(newViewBox);
   }, [width, height]);
 
+  // Place a component at the center of the currently visible canvas area
+  const placeComponentAtCanvasCenter = useCallback((component: Component) => {
+    try {
+      const centerX = viewBox.x + viewBox.width / 2;
+      const centerY = viewBox.y + viewBox.height / 2;
+
+      const defaultWidth = gridSize * 4;
+      const defaultHeight = gridSize * 4;
+
+      // Center the component by subtracting half its size, then snap
+      const snappedX = snapToGrid(centerX - defaultWidth / 2);
+      const snappedY = snapToGrid(centerY - defaultHeight / 2);
+
+      const newComponent: CanvasComponent = {
+        id: `${component.id}-${Date.now()}`,
+        componentId: component.id,
+        name: component.name,
+        category: component.category,
+        description: component.description,
+        tags: component.tags,
+        version: component.version,
+        author: component.author,
+        license: component.license,
+        x: snappedX,
+        y: snappedY,
+        width: defaultWidth,
+        height: defaultHeight,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        opacity: 1,
+        visible: true,
+        locked: false,
+        selected: false,
+        data: {},
+        properties: {},
+        svg: component.svg,
+        zIndex: canvasComponents.length + 1
+      };
+
+      console.log('🖱️ Double-click add at center:', component.name, '->', { x: snappedX, y: snappedY });
+      addCanvasComponent(newComponent);
+    } catch (error) {
+      console.error('🚨 Failed to place component at center:', error);
+    }
+  }, [viewBox, gridSize, snapToGrid, addCanvasComponent, canvasComponents.length]);
+
   // Mouse wheel zoom
   const handleWheel = useCallback((event: React.WheelEvent) => {
     event.preventDefault();
@@ -109,12 +156,14 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
     (window as any).zoomIn = zoomIn;
     (window as any).zoomOut = zoomOut;
     (window as any).resetZoom = resetZoom;
+    (window as any).placeComponentAtCanvasCenter = placeComponentAtCanvasCenter;
     return () => {
       delete (window as any).zoomIn;
       delete (window as any).zoomOut;
       delete (window as any).resetZoom;
+      delete (window as any).placeComponentAtCanvasCenter;
     };
-  }, [zoomIn, zoomOut, resetZoom]);
+  }, [zoomIn, zoomOut, resetZoom, placeComponentAtCanvasCenter]);
 
   const getSVGPoint = useCallback((event: React.MouseEvent) => {
     if (!svgRef.current) return { x: 0, y: 0 };
@@ -218,7 +267,13 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
     event.preventDefault();
     
     try {
+      const types = Array.from(event.dataTransfer?.types || []);
+      // If the native drop doesn't include JSON data, ignore it. React DnD's useDrop handles its own flow.
+      if (!types.includes('application/json')) {
+        return;
+      }
       const componentData = event.dataTransfer.getData('application/json');
+      if (!componentData) return;
       const component: Component = JSON.parse(componentData);
       
       const point = getSVGPoint(event as any);
@@ -248,7 +303,7 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
       
       addCanvasComponent(newComponent);
     } catch (error) {
-      console.error('❌ Failed to parse dropped component data:', error);
+      console.warn('⚠️ Ignoring non-JSON drop or parse error:', error);
     }
   }, [getSVGPoint, snapToGrid, addCanvasComponent, canvasComponents.length]);
 
@@ -309,9 +364,13 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
             group.setAttribute('transform', `translate(${canvasComponent.x}, ${canvasComponent.y}) scale(${compWidth / 100}, ${compHeight / 100})`);
             group.setAttribute('data-component-name', canvasComponent.name);
             
-            // Clone all children from original SVG
+            // Remove any <script> elements to ensure a static, safe export
+            Array.from(originalSvg.querySelectorAll('script')).forEach((s) => s.parentElement?.removeChild(s));
+
+            // Clone all children from original SVG (excluding scripts)
             Array.from(originalSvg.children).forEach(child => {
-              const clonedChild = child.cloneNode(true);
+              if ((child as Element).tagName.toLowerCase() === 'script') return;
+              const clonedChild = child.cloneNode(true) as Element;
               group.appendChild(clonedChild);
             });
             
@@ -326,6 +385,9 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
       }
     }
     
+    // Final hardening: remove any remaining <script> tags in the exported SVG clone
+    Array.from(svgClone.querySelectorAll('script')).forEach((s) => s.parentElement?.removeChild(s));
+
     // Serialize the final SVG
     const serializer = new XMLSerializer();
     const svgString = serializer.serializeToString(svgClone);
@@ -670,6 +732,9 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
         height="100%"
         viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
         className="svg-canvas"
+        data-testid="canvas-svg"
+        data-dnd-isover={isOver ? 'true' : 'false'}
+        data-dnd-candrop={canDrop ? 'true' : 'false'}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -691,6 +756,7 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
           height={viewBox.height}
           fill="#ffffff"
           stroke="none"
+          data-testid="canvas-background"
         />
         
         {/* Grid */}
@@ -701,7 +767,7 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
         />
         
         {/* Components */}
-        <g className="canvas-components">
+        <g className="canvas-components" data-testid="canvas-components">
           {canvasComponents.map((canvasComponent) => {
             const component = useAppStore.getState().availableComponents.find(c => c.id === canvasComponent.componentId);
             if (!component) {
@@ -723,12 +789,14 @@ export const SVGCanvas: React.FC<SVGCanvasProps> = ({
                   if (multiSelect) {
                     toggleComponentSelection(canvasComponent.id);
                   } else {
-                    selectComponents([canvasComponent.id]);
+                    // If already selected, preserve multi-selection; otherwise select only this
+                    if (!selectedComponentIds.includes(canvasComponent.id)) {
+                      selectComponents([canvasComponent.id]);
+                    }
                   }
                 }}
                 onUpdate={(updates: Partial<CanvasComponent>) => updateCanvasComponent(canvasComponent.id, updates)}
                 onMultiUpdate={updateMultipleComponents}
-                selectedComponents={canvasComponents.filter(c => selectedComponentIds.includes(c.id))}
               />
             );
           })}

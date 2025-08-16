@@ -34,8 +34,8 @@
 
     <defs>
     <!-- Internal SVG script -->
-    <script>
-      (function() {
+        <script><![CDATA[
+    (function() {
         // Function to read metadata
         function getMetadata(svgElement) {
           const metadataNode = svgElement.querySelector('script[type="application/json"][class="metadata"]');
@@ -101,6 +101,7 @@
           });
         }
       })();
-    </script>
+        ]]>
+        </script>
     </defs>
 </svg>

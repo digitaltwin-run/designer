@@ -9,25 +9,7 @@ interface ComponentItemProps {
 }
 
 export const ComponentItem: React.FC<ComponentItemProps> = ({ component, viewMode }) => {
-  // Debug logging
-  console.log('🔧 ComponentItem rendering:', { 
-    id: component?.id, 
-    name: component?.name, 
-    svg: component?.svg,
-    tags: component?.tags,
-    viewMode 
-  });
-
-  // Safety checks
-  if (!component) {
-    console.error('❌ ComponentItem: Missing component prop');
-    return <div className="component-error">Missing component data</div>;
-  }
-
-  if (!component.id || !component.name) {
-    console.error('❌ ComponentItem: Invalid component data:', component);
-    return <div className="component-error">Invalid component: {component.id || 'no-id'}</div>;
-  }
+  // Reduced logging for performance
 
   const [{ isDragging }, drag] = useDrag({
     type: 'component',
@@ -37,18 +19,44 @@ export const ComponentItem: React.FC<ComponentItemProps> = ({ component, viewMod
     }),
   });
   
-  // Debug drag state
-  console.log('🔧 ComponentItem drag state:', { name: component.name, isDragging });
+  // Reduced logging for performance
+
+  // Bridge react-dnd drag ref to a typed React ref callback
+  const dragRef = React.useCallback((node: HTMLDivElement | null) => {
+    if (node) drag(node);
+  }, [drag]);
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const fn = (window as unknown as { placeComponentAtCanvasCenter?: (component: Component) => void }).placeComponentAtCanvasCenter;
+    if (typeof fn === 'function') {
+      fn(component);
+    } else {
+      console.warn('placeComponentAtCanvasCenter is not available');
+    }
+  };
+
+  // If invalid component data, render fallback but do not skip hooks
+  const invalid = !component || !component.id || !component.name;
 
   if (viewMode === 'list') {
     return (
       <div
-        ref={drag as any}
+        ref={dragRef}
         className={`component-item-list ${
           isDragging ? 'dragging' : ''
         }`}
+        data-testid="sidebar-item"
+        data-component-id={component.id}
+        data-testid-item={`sidebar-item-${component.id}`}
+        draggable
+        onDoubleClick={handleDoubleClick}
       >
-        {/* SVG Preview */}
+        {/* Invalid fallback */}
+        {invalid ? (
+          <div className="component-error">Invalid component: {component?.id || 'no-id'}</div>
+        ) : (
+        // SVG Preview
         <div className="component-preview-list">
           <img
             src={component.svg}
@@ -63,7 +71,7 @@ export const ComponentItem: React.FC<ComponentItemProps> = ({ component, viewMod
               }
             }}
           />
-        </div>
+        </div>)}
 
         {/* Component Info */}
         <div className="component-info-list">
@@ -87,34 +95,43 @@ export const ComponentItem: React.FC<ComponentItemProps> = ({ component, viewMod
   // Grid view
   return (
     <div
-      ref={drag as any}
+      ref={dragRef}
       className={`component-item-grid ${
         isDragging ? 'dragging' : ''
       }`}
+      data-testid="sidebar-item"
+      data-component-id={component.id}
+      data-testid-item={`sidebar-item-${component.id}`}
+      draggable
+      onDoubleClick={handleDoubleClick}
     >
-      {/* SVG Preview */}
-      <div className="component-preview-grid">
-        <img
-          src={component.svg}
-          alt={component.name}
-          onError={(e) => {
-            // Fallback to placeholder if SVG fails to load
-            const target = e.target as HTMLImageElement;
-            target.style.display = 'none';
-            const parent = target.parentElement;
-            if (parent) {
-              parent.innerHTML = `
-                <div class="component-placeholder">
-                  <div class="component-placeholder-content">
-                    <div class="component-placeholder-icon"></div>
-                    ${component.id}
+      {/* Invalid fallback or SVG Preview */}
+      {invalid ? (
+        <div className="component-error">Invalid component: {component?.id || 'no-id'}</div>
+      ) : (
+        <div className="component-preview-grid">
+          <img
+            src={component.svg}
+            alt={component.name}
+            onError={(e) => {
+              // Fallback to placeholder if SVG fails to load
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = `
+                  <div class="component-placeholder">
+                    <div class="component-placeholder-content">
+                      <div class="component-placeholder-icon"></div>
+                      ${component.id}
+                    </div>
                   </div>
-                </div>
-              `;
-            }
-          }}
-        />
-      </div>
+                `;
+              }
+            }}
+          />
+        </div>
+      )}
 
       {/* Component Info */}
       <div className="component-info-grid">
